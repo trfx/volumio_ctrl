@@ -9,6 +9,9 @@ It discovers `_Volumio._tcp` services with `avahi-browse`, reads playback state 
 - Omarchy Quattro with the plugin directory enabled
 - `avahi-browse` and `curl`
 
+## Screenshot
+![Volumio Control](screenshot.png)
+
 ## Install
 
 ```sh
