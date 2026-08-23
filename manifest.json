@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "volumio_ctrl",
+  "name": "Volumio Control",
+  "version": "0.1.0",
+  "author": "Third-party Omarchy plugin",
+  "license": "MIT",
+  "description": "Discover and control Volumio players on the local network.",
+  "kinds": ["service", "bar-widget"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Volumio",
+    "description": "Show and control the current Volumio track.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
