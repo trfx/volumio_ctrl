@@ -78,6 +78,15 @@ Item {
   function playPause() { command(isPlaying ? "pause" : "play") }
   function previous() { command("prev") }
   function next() { command("next") }
+  function playQueueItem(uri) {
+    if (!queue || !uri) return
+    for (var i = 0; i < queue.length; i++) {
+      if (queue[i].uri === uri) {
+        command("play&N=" + i)
+        return
+      }
+    }
+  }
   function seekTo(seconds) {
     if (duration <= 0) return
     var target = Math.max(0, Math.min(duration, Number(seconds) || 0))
