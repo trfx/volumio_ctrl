@@ -204,6 +204,18 @@ Panel {
             height: parent.height
             color: Color.accent
           }
+          MouseArea {
+            anchors.fill: parent
+            anchors.topMargin: -Style.space(8)
+            anchors.bottomMargin: -Style.space(8)
+            enabled: root.service && root.service.duration > 0
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: function(mouse) {
+              if (!root.service || root.service.duration <= 0) return
+              root.service.seekTo(root.service.duration * Math.max(0, Math.min(1, mouse.x / width)))
+            }
+          }
         }
       }
 
