@@ -13,6 +13,9 @@ Panel {
   property var hostWidget: null
   property var service: null
   property string activeButton: ""
+  property bool playlistOpen: false
+
+  onPlaylistOpenChanged: if (playlistOpen) Qt.callLater(root.positionCurrentTrack)
 
   function flashButton(name) {
     activeButton = name
@@ -22,6 +25,23 @@ Panel {
   function timeText(seconds) {
     var value = Math.max(0, Math.floor(Number(seconds) || 0))
     return Math.floor(value / 60) + ":" + (value % 60 < 10 ? "0" : "") + value % 60
+  }
+
+  function selectedTrackForeground() {
+    var luminance = 0.2126 * Color.accent.r + 0.7152 * Color.accent.g + 0.0722 * Color.accent.b
+    return luminance > 0.5 ? "#111111" : "#ffffff"
+  }
+
+  function positionCurrentTrack() {
+    if (!root.service || !playlistView.count) return
+    var currentUri = root.service.currentUri
+    var queue = root.service.queue || []
+    for (var i = 0; i < queue.length; i++) {
+      if (queue[i].uri === currentUri) {
+        playlistView.positionViewAtIndex(i, ListView.Contain)
+        return
+      }
+    }
   }
 
   IpcHandler {
@@ -86,9 +106,10 @@ Panel {
         Column {
           anchors.left: cover.right
           anchors.leftMargin: Style.space(18)
-          anchors.right: parent.right
+          anchors.right: volumeCluster.left
+          anchors.rightMargin: Style.space(10)
           anchors.top: parent.top
-          anchors.topMargin: Style.space(24)
+          anchors.topMargin: Style.space(44)
           spacing: Style.space(5)
 
           Text {
@@ -98,6 +119,8 @@ Panel {
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.title
             font.bold: true
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
             elide: Text.ElideRight
           }
           Text {
@@ -115,6 +138,23 @@ Panel {
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.body
             elide: Text.ElideRight
+          }
+          Text {
+            width: parent.width
+            text: {
+              if (!root.service) return ""
+              var details = []
+              if (root.service.trackType) details.push(root.service.trackType)
+              if (root.service.bitrate) details.push(root.service.bitrate)
+              if (root.service.sampleRate) details.push(root.service.sampleRate)
+              if (root.service.bitDepth) details.push(root.service.bitDepth)
+              return details.join(" · ")
+            }
+            color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.35)
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.caption
+            elide: Text.ElideRight
+            visible: text !== ""
           }
         }
 
@@ -199,7 +239,7 @@ Panel {
           anchors.left: parent.left
           anchors.right: parent.right
           anchors.bottom: parent.bottom
-          height: Style.space(5)
+          height: Style.space(6)
           color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 2.5)
           Rectangle {
             width: parent.width * (root.service && root.service.duration > 0 ? Math.min(1, root.service.seek / root.service.duration) : 0)
@@ -207,6 +247,7 @@ Panel {
             color: Color.accent
           }
           MouseArea {
+            z: 10
             anchors.fill: parent
             anchors.topMargin: -Style.space(8)
             anchors.bottomMargin: -Style.space(8)
@@ -229,12 +270,137 @@ Panel {
         TextButton { text: "NEXT"; onClicked: { root.flashButton("next"); if (root.service) root.service.next() } }
       }
 
+      Row {
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: Style.space(10)
+        TextButton {
+          text: "SHUFFLE"
+          selected: root.service && root.service.shuffle
+          opacity: selected ? 1.0 : 0.45
+          onClicked: { root.flashButton("shuffle"); if (root.service) root.service.toggleShuffle() }
+        }
+        TextButton {
+          text: "PLS"
+          onClicked: {
+            root.close()
+            root.playlistOpen = true
+            if (root.service) root.service.refreshQueue()
+          }
+        }
+      }
+    }
+  }
+
+  KeyboardPanel {
+    id: playlistPopup
+    anchorItem: root.anchorItem
+    owner: root.hostWidget || root
+    bar: root.bar
+    open: root.playlistOpen
+    contentWidth: playlistPopup.fittedContentWidth(Style.space(520))
+    contentHeight: playlistPopup.fittedContentHeight(playlistContent.implicitHeight, Style.space(560))
+
+    Column {
+      id: playlistContent
+      width: parent.width
+      spacing: Style.space(10)
+
+      Text {
+        text: "PLAYLIST"
+        color: root.bar ? root.bar.foreground : Color.foreground
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.font.title
+        font.bold: true
+      }
+
+      ListView {
+        id: playlistView
+        width: parent.width
+        height: Math.min(contentHeight, Style.space(430))
+        implicitHeight: contentHeight
+        clip: true
+        model: root.service ? root.service.queue : []
+        onCountChanged: Qt.callLater(root.positionCurrentTrack)
+        delegate: Rectangle {
+          required property var modelData
+          readonly property bool isCurrent: modelData.uri === (root.service ? root.service.currentUri : "")
+          readonly property bool isHovered: rowHover.hovered
+          width: ListView.view.width
+          height: Style.space(42)
+          color: isHovered
+            ? Style.hoverFillFor(root.bar ? root.bar.foreground : Color.foreground, Color.accent)
+            : isCurrent ? Style.selectedFillFor(root.bar ? root.bar.foreground : Color.foreground, Color.accent)
+            : "transparent"
+          radius: Style.cornerRadius
+
+          HoverHandler {
+            id: rowHover
+          }
+
+          Column {
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(10)
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(10)
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(2)
+
+            Text {
+              width: parent.width
+              text: modelData.name || "Unknown track"
+              color: isCurrent && !isHovered
+                ? root.selectedTrackForeground()
+                : root.bar ? root.bar.foreground : Color.foreground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.body
+              font.bold: isCurrent
+              elide: Text.ElideRight
+            }
+
+            Connections {
+              target: root.service
+              function onCurrentUriChanged() { Qt.callLater(root.positionCurrentTrack) }
+              function onQueueChanged() { Qt.callLater(root.positionCurrentTrack) }
+            }
+            Text {
+              width: parent.width
+              text: modelData.artist || ""
+              color: isCurrent && !isHovered
+                ? root.selectedTrackForeground()
+                : root.bar ? root.bar.foreground : Color.foreground
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+              visible: text !== ""
+            }
+          }
+
+          TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: {
+              root.flashButton("play")
+              if (root.service) root.service.playQueueItem(modelData.uri)
+            }
+          }
+        }
+      }
+
+      Text {
+        width: parent.width
+        text: root.service && root.service.queue.length ? "" : "No tracks in queue"
+        color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.35)
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: Style.font.body
+        visible: text !== ""
+      }
+
       TextButton {
         anchors.horizontalCenter: parent.horizontalCenter
-        text: "SHUFFLE"
-        selected: root.service && root.service.shuffle
-        opacity: selected ? 1.0 : 0.45
-        onClicked: { root.flashButton("shuffle"); if (root.service) root.service.toggleShuffle() }
+        text: "BACK"
+        onClicked: {
+          root.playlistOpen = false
+          root.open()
+        }
       }
     }
   }
