@@ -11,6 +11,11 @@ Item {
   property string title: ""
   property string artist: ""
   property string album: ""
+  property string currentUri: ""
+  property string trackType: ""
+  property string bitrate: ""
+  property string sampleRate: ""
+  property string bitDepth: ""
   property string albumArt: ""
   property string status: ""
   property double duration: 0
@@ -19,6 +24,7 @@ Item {
   property bool isPlaying: false
   property bool shuffle: false
   property string error: ""
+  property var queue: []
   readonly property int volumeStep: 2
 
   readonly property var selectedDevice: devices.length > selectedIndex ? devices[selectedIndex] : null
@@ -57,6 +63,11 @@ Item {
     stateRequest.command = ["curl", "-fsS", "--max-time", "3", "http://" + selectedHost + ":3000/api/v1/getState"]
     stateRequest.running = true
   }
+  function refreshQueue() {
+    if (!selectedHost || queueRequest.running) return
+    queueRequest.command = ["curl", "-fsS", "--max-time", "3", "http://" + selectedHost + ":3000/api/v1/getQueue"]
+    queueRequest.running = true
+  }
 
   function command(name) {
     if (!selectedHost || commandRequest.running) return
@@ -86,6 +97,11 @@ Item {
       title = String(state.title || "")
       artist = String(state.artist || "")
       album = String(state.album || "")
+      currentUri = String(state.uri || "")
+      trackType = String(state.trackType || "").toUpperCase()
+      bitrate = String(state.bitrate || "")
+      sampleRate = String(state.samplerate || "")
+      bitDepth = String(state.bitdepth || "")
       albumArt = String(state.albumart || "")
       status = String(state.status || "")
       duration = Number(state.duration || 0)
@@ -114,6 +130,23 @@ Item {
     onExited: function(exitCode) {
       if (exitCode === 0) root.applyState(stateOutput.text)
       else root.error = "Volumio is unavailable"
+    }
+  }
+
+  Process {
+    id: queueRequest
+    stdout: StdioCollector { id: queueOutput; waitForEnd: true }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        root.error = "Volumio playlist unavailable"
+        return
+      }
+      try {
+        var response = JSON.parse(String(queueOutput.text || ""))
+        root.queue = Array.isArray(response.queue) ? response.queue : []
+      } catch (e) {
+        root.error = "Invalid playlist response from " + root.selectedName
+      }
     }
   }
 
