@@ -67,6 +67,11 @@ Item {
   function playPause() { command(isPlaying ? "pause" : "play") }
   function previous() { command("prev") }
   function next() { command("next") }
+  function seekTo(seconds) {
+    if (duration <= 0) return
+    var target = Math.max(0, Math.min(duration, Number(seconds) || 0))
+    command("seek&position=" + Math.round(target))
+  }
   function toggleShuffle() { command("random&value=" + (!shuffle)) }
   function setVolume(value) {
     var next = Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
@@ -84,7 +89,9 @@ Item {
       albumArt = String(state.albumart || "")
       status = String(state.status || "")
       duration = Number(state.duration || 0)
-      seek = Number(state.seek || 0) / 1000
+      var reportedSeek = Number(state.seek) / 1000
+      if (isFinite(reportedSeek) && reportedSeek >= 0 && reportedSeek <= duration)
+        seek = reportedSeek
       volume = Number(state.volume || 0)
       isPlaying = status === "play"
       shuffle = !!(state.random || state.shuffle)

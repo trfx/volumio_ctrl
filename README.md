@@ -23,6 +23,4 @@ Add `volumio_ctrl` to the bar layout. Discovery runs when the service initialize
 
 ## TODO
 - Volumio icon
-- interactive progress bar
-- interactive volume ring
 - better positioning of track title and artist

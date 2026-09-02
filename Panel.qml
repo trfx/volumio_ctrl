@@ -122,28 +122,29 @@ Panel {
           id: volumeCluster
           anchors.right: parent.right
           anchors.top: parent.top
-          width: Style.space(112)
-          height: Style.space(44)
+          width: Style.space(52)
+          height: Style.space(52)
 
           Canvas {
             id: volumeRing
-            width: Style.space(44)
-            height: Style.space(44)
-            anchors.centerIn: parent
+            width: Style.space(52)
+            height: Style.space(52)
+            anchors.fill: parent
             onPaint: {
               var context = getContext("2d")
               var center = width / 2
-              var radius = center - 4
+              var radius = center - 6
               var value = root.service ? Math.max(0, Math.min(100, root.service.volume)) : 0
               context.reset()
               context.beginPath()
               context.arc(center, center, radius, 0, Math.PI * 2)
               context.strokeStyle = Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 2.5)
-              context.lineWidth = 4
+              context.lineWidth = 6
               context.stroke()
               context.beginPath()
               context.arc(center, center, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * value / 100)
               context.strokeStyle = Color.accent
+              context.lineWidth = 6
               context.stroke()
             }
             Connections {
@@ -152,26 +153,27 @@ Panel {
             }
             Component.onCompleted: requestPaint()
           }
+          MouseArea {
+            anchors.centerIn: volumeRing
+            width: volumeRing.width
+            height: volumeRing.height
+            onClicked: function(mouse) {
+              var center = width / 2
+              var dx = mouse.x - center
+              var dy = mouse.y - center
+              if (Math.sqrt(dx * dx + dy * dy) > center) return
+              var angle = Math.atan2(dy, dx) + Math.PI / 2
+              if (angle < 0) angle += Math.PI * 2
+              root.flashButton("volume")
+              if (root.service) root.service.setVolume(angle / (Math.PI * 2) * 100)
+            }
+          }
           Text {
             anchors.centerIn: volumeRing
             text: root.service ? Math.round(root.service.volume) : "-"
             color: root.bar ? root.bar.foreground : Color.foreground
             font.family: root.bar ? root.bar.fontFamily : Style.font.family
             font.pixelSize: Style.font.caption
-          }
-          TextButton {
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            compact: true
-            text: "-"
-            onClicked: { root.flashButton("down"); if (root.service) root.service.volumeDown() }
-          }
-          TextButton {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            compact: true
-            text: "+"
-            onClicked: { root.flashButton("up"); if (root.service) root.service.volumeUp() }
           }
         }
       }
@@ -203,6 +205,18 @@ Panel {
             width: parent.width * (root.service && root.service.duration > 0 ? Math.min(1, root.service.seek / root.service.duration) : 0)
             height: parent.height
             color: Color.accent
+          }
+          MouseArea {
+            anchors.fill: parent
+            anchors.topMargin: -Style.space(8)
+            anchors.bottomMargin: -Style.space(8)
+            enabled: root.service && root.service.duration > 0
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: function(mouse) {
+              if (!root.service || root.service.duration <= 0) return
+              root.service.seekTo(root.service.duration * Math.max(0, Math.min(1, mouse.x / width)))
+            }
           }
         }
       }
