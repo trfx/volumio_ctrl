@@ -280,6 +280,12 @@ Panel {
         anchors.horizontalCenter: parent.horizontalCenter
         spacing: Style.space(10)
         TextButton {
+          text: "MUTE"
+          selected: root.service && root.service.muted
+          opacity: selected ? 1.0 : 0.45
+          onClicked: { root.flashButton("mute"); if (root.service) root.service.toggleMute() }
+        }
+        TextButton {
           text: "SHUFFLE"
           selected: root.service && root.service.shuffle
           opacity: selected ? 1.0 : 0.45
