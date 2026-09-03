@@ -21,6 +21,7 @@ Item {
   property double duration: 0
   property double seek: 0
   property int volume: 0
+  property bool muted: false
   property bool isPlaying: false
   property bool shuffle: false
   property string error: ""
@@ -93,6 +94,7 @@ Item {
     command("seek&position=" + Math.round(target))
   }
   function toggleShuffle() { command("random&value=" + (!shuffle)) }
+  function toggleMute() { command("volume&volume=toggle") }
   function setVolume(value) {
     var next = Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
     command("volume&volume=" + next)
@@ -118,6 +120,7 @@ Item {
       if (isFinite(reportedSeek) && reportedSeek >= 0 && reportedSeek <= duration)
         seek = reportedSeek
       volume = Number(state.volume || 0)
+      muted = state.mute === true || state.mute === "true" || state.mute === 1 || state.mute === "1"
       isPlaying = status === "play"
       shuffle = !!(state.random || state.shuffle)
       error = ""
