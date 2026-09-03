@@ -32,6 +32,13 @@ Panel {
     return luminance > 0.5 ? "#111111" : "#ffffff"
   }
 
+  function albumArtUrl() {
+    if (!root.service || !root.service.albumArt) return ""
+    var art = root.service.albumArt
+    if (/^https?:\/\//.test(art)) return art
+    return "http://" + root.service.selectedHost + ":3000" + (art.charAt(0) === "/" ? art : "/" + art)
+  }
+
   function positionCurrentTrack() {
     if (!root.service || !playlistView.count) return
     var currentUri = root.service.currentUri
@@ -86,10 +93,9 @@ Panel {
           clip: true
 
           Image {
+            id: albumArtImage
             anchors.fill: parent
-            source: root.service && root.service.selectedHost && root.service.albumArt
-              ? "http://" + root.service.selectedHost + ":3000" + root.service.albumArt
-              : ""
+            source: root.albumArtUrl()
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             visible: status === Image.Ready
@@ -99,7 +105,7 @@ Panel {
             text: "♪"
             color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.4)
             font.pixelSize: Style.font.display
-            visible: parent.children[0].status !== Image.Ready
+            visible: albumArtImage.status !== Image.Ready
           }
         }
 
