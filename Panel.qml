@@ -32,6 +32,13 @@ Panel {
     return luminance > 0.5 ? "#111111" : "#ffffff"
   }
 
+  function albumArtUrl() {
+    if (!root.service || !root.service.albumArt) return ""
+    var art = root.service.albumArt
+    if (/^https?:\/\//.test(art)) return art
+    return "http://" + root.service.selectedHost + ":3000" + (art.charAt(0) === "/" ? art : "/" + art)
+  }
+
   function positionCurrentTrack() {
     if (!root.service || !playlistView.count) return
     var currentUri = root.service.currentUri
@@ -86,10 +93,9 @@ Panel {
           clip: true
 
           Image {
+            id: albumArtImage
             anchors.fill: parent
-            source: root.service && root.service.selectedHost && root.service.albumArt
-              ? "http://" + root.service.selectedHost + ":3000" + root.service.albumArt
-              : ""
+            source: root.albumArtUrl()
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             visible: status === Image.Ready
@@ -99,7 +105,7 @@ Panel {
             text: "♪"
             color: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.4)
             font.pixelSize: Style.font.display
-            visible: parent.children[0].status !== Image.Ready
+            visible: albumArtImage.status !== Image.Ready
           }
         }
 
@@ -323,6 +329,7 @@ Panel {
         onCountChanged: Qt.callLater(root.positionCurrentTrack)
         delegate: Rectangle {
           required property var modelData
+          required property int index
           readonly property bool isCurrent: modelData.uri === (root.service ? root.service.currentUri : "")
           readonly property bool isHovered: rowHover.hovered
           width: ListView.view.width
@@ -337,42 +344,58 @@ Panel {
             id: rowHover
           }
 
-          Column {
+          Text {
             anchors.left: parent.left
             anchors.leftMargin: Style.space(10)
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(28)
+            text: modelData.tracknumber > 0 ? modelData.tracknumber : index + 1
+            color: isCurrent && !isHovered
+              ? root.selectedTrackForeground()
+              : Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.35)
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignRight
+          }
+
+          Text {
             anchors.right: parent.right
             anchors.rightMargin: Style.space(10)
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
+            width: Style.space(45)
+            text: Number(modelData.duration) > 0 ? root.timeText(modelData.duration) : ""
+            color: isCurrent && !isHovered
+              ? root.selectedTrackForeground()
+              : Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.35)
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignRight
+            visible: text !== ""
+          }
 
-            Text {
-              width: parent.width
-              text: modelData.name || "Unknown track"
-              color: isCurrent && !isHovered
-                ? root.selectedTrackForeground()
-                : root.bar ? root.bar.foreground : Color.foreground
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.body
-              font.bold: isCurrent
-              elide: Text.ElideRight
-            }
+          Text {
+            anchors.left: parent.left
+            anchors.leftMargin: Style.space(48)
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(65)
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width
+            text: modelData.artist
+              ? modelData.artist + " - " + (modelData.name || "Unknown track")
+              : (modelData.name || "Unknown track")
+            color: isCurrent && !isHovered
+              ? root.selectedTrackForeground()
+              : root.bar ? root.bar.foreground : Color.foreground
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.body
+            font.bold: isCurrent
+            elide: Text.ElideRight
+          }
 
-            Connections {
-              target: root.service
-              function onCurrentUriChanged() { Qt.callLater(root.positionCurrentTrack) }
-              function onQueueChanged() { Qt.callLater(root.positionCurrentTrack) }
-            }
-            Text {
-              width: parent.width
-              text: modelData.artist || ""
-              color: isCurrent && !isHovered
-                ? root.selectedTrackForeground()
-                : root.bar ? root.bar.foreground : Color.foreground
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-              visible: text !== ""
-            }
+          Connections {
+            target: root.service
+            function onCurrentUriChanged() { Qt.callLater(root.positionCurrentTrack) }
+            function onQueueChanged() { Qt.callLater(root.positionCurrentTrack) }
           }
 
           TapHandler {
