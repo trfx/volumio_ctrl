@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.Ui
 
@@ -51,10 +52,36 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "VOL"
-    tooltipText: root.volumio && root.volumio.selectedName
-      ? "Volumio: " + root.volumio.selectedName
-      : "Volumio"
+    iconComponent: Component {
+      Item {
+        Image {
+          id: volumioIcon
+          anchors.fill: parent
+          source: Qt.resolvedUrl("volumio-icon.png")
+          sourceSize.width: width
+          sourceSize.height: height
+          fillMode: Image.PreserveAspectFit
+          visible: false
+        }
+
+        MultiEffect {
+          anchors.fill: volumioIcon
+          source: volumioIcon
+          colorization: 1.0
+          colorizationColor: button.foreground
+        }
+      }
+    }
+    tooltipText: {
+      if (!root.volumio || !root.volumio.selectedHost) return "Volumio"
+      var track = root.volumio.artist && root.volumio.title
+        ? root.volumio.artist + " \"" + root.volumio.title + "\""
+        : (root.volumio.title || root.volumio.artist || "")
+      if (root.volumio.status === "stop") return "Volumio: nothing is playing."
+      if (track) return track
+      if (root.volumio.isPlaying) return "Volumio: playing"
+      return "Volumio: nothing is playing."
+    }
     onPressed: root.togglePanel()
   }
 }
